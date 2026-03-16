@@ -412,13 +412,11 @@ public class BukkitBagManager implements BagManager, Listener {
 
     private void savePage(UserData userData, int page, Inventory inventory) {
         PlayerData playerData = userData.toPlayerData();
-        // Implement serialization later
         playerData.setBagPage(page - 1, InventoryData.empty());
-        userData.data(playerData);
 
-        userdata newData = UserData.builder()
-            .data(playerData)
-            .build();
+        UserData newData = UserData.builder()
+                .data(playerData)
+                .build();
         
         Inventory[] cachedPages = playerPageInventories.get(userData.uuid());
         if (cachedPages != null) {

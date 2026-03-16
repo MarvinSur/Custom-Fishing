@@ -52,6 +52,18 @@ public class AutoSellListener implements Listener {
         this.marketManager = (BukkitMarketManager) plugin.getMarketManager();
     }
 
+    private Pair<Integer, Double> calculateSellValue(Player player) {
+        Optional<UserData> userDataOpt = plugin.getStorageManager().getOnlineUser(player.getUniqueId());
+        if (userDataOpt.isEmpty()) return Pair.of(0, 0.0);
+
+        UserData userData = userDataOpt.get();
+        PlayerData playerData = userData.toPlayerData();
+    
+        List<InventoryData> pages = playerData.getBagPages();
+    
+        return Pair.of(0, 0.0);
+    }
+
     @EventHandler(priority = EventPriority.MONITOR)
     public void onInventoryClose(InventoryCloseEvent event) {
         if (!(event.getPlayer() instanceof Player player)) return;
