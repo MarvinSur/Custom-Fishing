@@ -26,23 +26,23 @@ subprojects {
     apply(plugin = "com.gradleup.shadow")
 
     dependencies {
-        // PAPER API - COMPILE ONLY (jangan ikut di-shadow)
+        // Paper API - COMPILE ONLY (jangan ikut di-shadow)
         compileOnly("io.papermc.paper:paper-api:1.20.4-R0.1-SNAPSHOT")
 
-        // Cloud command framework (wajib di-shadow)
+        // Cloud command framework
         implementation("org.incendo:cloud-core:2.0.0")
         implementation("org.incendo:cloud-services:2.0.0")
         implementation("org.incendo:cloud-bukkit:2.0.0-beta.10")
         implementation("org.incendo:cloud-paper:2.0.0-beta.10")
         implementation("org.incendo:cloud-minecraft-extras:2.0.0-beta.10")
 
-        // Boosted Yaml (wajib di-shadow)
+        // Boosted Yaml
         implementation("dev.dejvokep:boosted-yaml:1.3.7")
 
-        // Gson (sudah include di server? better shadow)
+        // Gson
         implementation("com.google.code.gson:gson:2.10.1")
 
-        // Database drivers (optional, bisa di-shadow)
+        // Database drivers
         implementation("com.zaxxer:HikariCP:5.0.1")
         implementation("org.mongodb:mongodb-driver-sync:4.10.2")
         implementation("redis.clients:jedis:4.4.3")
@@ -98,7 +98,7 @@ subprojects {
         mergeServiceFiles()
         minimize()
 
-        // Relocate semua dependency ke package custom
+        // Relocate dependencies
         val libsPackage = "net.momirealms.customfishing.libs"
         relocate("org.incendo", "$libsPackage.org.incendo")
         relocate("dev.dejvokep.boostedyaml", "$libsPackage.dev.dejvokep.boostedyaml")
@@ -117,7 +117,6 @@ subprojects {
         relocate("org.sqlite", "$libsPackage.org.sqlite")
         relocate("org.h2", "$libsPackage.org.h2")
 
-        // Exclude file tidak perlu
         exclude("META-INF/maven/**")
         exclude("META-INF/versions/**")
         exclude("**/module-info.class")

@@ -3,142 +3,51 @@ name: Build and Release CustomFishing
 on:
   push:
     branches: [ "main" ]
-    paths-ignore:
-      - '**.md'
-      - '.github/**'
   pull_request:
     branches: [ "main" ]
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
           cache: gradle
-
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
+      - run: chmod +x gradlew
+      - run: ./gradlew clean shadowJarAll --no-daemon
 
-      - name: Grant execute permission for gradlew
-        run: chmod +x gradlew
-
-      - name: Build with ShadowJar
-        run: ./gradlew clean shadowJarAll --no-daemon --stacktrace
-
-      - name: Collect JARs
+      - name: Collect artifacts
         run: |
           mkdir -p artifacts
-          
-          # Core module
-          cp core/build/libs/CustomFishing-core-*.jar artifacts/ 2>/dev/null || true
-          
-          # API module
-          cp api/build/libs/CustomFishing-api-*.jar artifacts/ 2>/dev/null || true
-          
-          # Compatibility module
-          cp compatibility/build/libs/CustomFishing-compatibility-*.jar artifacts/ 2>/dev/null || true
-          
-          # Remove any sources or javadoc jars
-          rm -f artifacts/*-sources.jar artifacts/*-javadoc.jar 2>/dev/null || true
-          
-          echo "=== Collected JARs ==="
+          cp core/build/libs/CustomFishing-core-*.jar artifacts/ || true
+          cp api/build/libs/CustomFishing-api-*.jar artifacts/ || true
+          cp compatibility/build/libs/CustomFishing-compatibility-*.jar artifacts/ || true
+          rm -f artifacts/*-sources.jar artifacts/*-javadoc.jar
           ls -la artifacts/
-          
-          echo "=== JAR Sizes ==="
-          for file in artifacts/*.jar; do
-            size=$(du -h "$file" | cut -f1)
-            echo "  $size - $(basename "$file")"
-          done
 
-      - name: Upload build artifacts
+      - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: CustomFishing-Build-${{ github.sha }}
           path: artifacts/
-          retention-days: 30
-          if-no-files-found: error
 
       - name: Get version
         id: version
-        run: |
-          VERSION=$(grep "^project_version=" gradle.properties | cut -d'=' -f2)
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "Version: $VERSION"
+        run: echo "version=$(grep '^project_version=' gradle.properties | cut -d'=' -f2)" >> $GITHUB_OUTPUT
 
-      - name: Create Git Tag
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          
-          TAG_NAME="v${{ steps.version.outputs.version }}"
-          
-          # Hapus tag lama kalau ada
-          git push origin ":refs/tags/$TAG_NAME" 2>/dev/null || true
-          git tag -d "$TAG_NAME" 2>/dev/null || true
-          
-          # Buat tag baru
-          git tag -a "$TAG_NAME" -m "Release $TAG_NAME"
-          git push origin "$TAG_NAME"
-          
-          echo "Created tag: $TAG_NAME"
-
-      - name: Generate Release Notes
-        id: notes
-        run: |
-          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
-          
-          if [ -n "$PREV_TAG" ]; then
-            NOTES=$(git log --pretty=format:"* %s (%h)" ${PREV_TAG}..HEAD)
-          else
-            NOTES=$(git log --pretty=format:"* %s (%h)" -n 20)
-          fi
-          
-          echo "notes<<EOF" >> $GITHUB_OUTPUT
-          echo "$NOTES" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-
-      - name: Delete old release
-        uses: dev-drprasad/delete-tag-and-release@v1.1
-        with:
-          tag_name: v${{ steps.version.outputs.version }}
-          delete_release: true
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-        continue-on-error: true
-
-      - name: Create GitHub Release
+      - name: Create GitHub Release (auto)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ steps.version.outputs.version }}
           name: CustomFishing v${{ steps.version.outputs.version }}
-          body: |
-            ## 🎣 CustomFishing v${{ steps.version.outputs.version }}
-            
-            ### ✨ Changes
-            ${{ steps.notes.outputs.notes }}
-            
-            ### 📦 Downloads
-            $(for file in artifacts/*.jar; do
-              filename=$(basename "$file")
-              size=$(du -h "$file" | cut -f1)
-              echo "- \`$filename\` ($size)"
-            done)
-            
-            ### 🔧 Requirements
-            - Java 17 or higher
-            - Paper 1.20.4 or higher
           files: artifacts/*.jar
-          draft: false
-          prerelease: false
+          generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          
