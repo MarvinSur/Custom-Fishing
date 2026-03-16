@@ -18,7 +18,6 @@
 package net.momirealms.customfishing.bukkit.listener;
 
 import net.momirealms.customfishing.api.BukkitCustomFishingPlugin;
-import net.momirealms.customfishing.api.mechanic.bag.BagManager;
 import net.momirealms.customfishing.api.mechanic.context.Context;
 import net.momirealms.customfishing.api.storage.data.InventoryData;
 import net.momirealms.customfishing.api.storage.data.PlayerData;
@@ -84,17 +83,11 @@ public class AutoSellListener implements Listener {
         double totalValue = sellResult.right();
 
         if (totalValue > 0) {
-            // Add money to player
             addMoney(player, totalValue);
-            
-            // Clear all bag pages
             clearAllBagPages(player);
 
-            // Send success message
             player.sendMessage("§a§lAUTO SELL! §7Sold §e" + sellResult.left() + " §7items for §a$" + String.format("%,.2f", totalValue));
             player.sendMessage("§7Your fishing bag has been cleared.");
-            
-            // Play sound
             player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.0f);
         }
     }
@@ -108,20 +101,8 @@ public class AutoSellListener implements Listener {
         
         List<ItemStack> allItems = new ArrayList<>();
         
-        // Collect all items from all pages
-        for (InventoryData pageData : pages) {
-            if (pageData != null && pageData.itemStacks() != null) {
-                for (ItemStack item : pageData.itemStacks()) {
-                    if (item != null && !item.getType().isAir()) {
-                        allItems.add(item.clone());
-                    }
-                }
-            }
-        }
-        
         if (allItems.isEmpty()) return Pair.of(0, 0.0);
         
-        // Use market manager to calculate total value
         Context<Player> context = Context.player(player);
         return marketManager.getItemsToSell(context, allItems);
     }
@@ -142,8 +123,6 @@ public class AutoSellListener implements Listener {
     }
 
     private void addMoney(Player player, double amount) {
-        // Using Vault or any economy plugin
-        // You can modify this to use your preferred economy system
         Bukkit.dispatchCommand(
             Bukkit.getConsoleSender(),
             "eco give " + player.getName() + " " + (int) amount

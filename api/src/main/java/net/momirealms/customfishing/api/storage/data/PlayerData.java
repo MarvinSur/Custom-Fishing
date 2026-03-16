@@ -28,7 +28,6 @@ import static java.util.Objects.requireNonNull;
 
 /**
  * The PlayerData class holds data related to a player.
- * It includes the player's name, their fishing statistics, inventory data, and earnings data.
  */
 public class PlayerData {
 
@@ -84,9 +83,6 @@ public class PlayerData {
                 .build();
     }
 
-    /**
-     * The Builder class provides a fluent API for constructing PlayerData instances.
-     */
     public static class Builder {
 
         private String name = DEFAULT_NAME;
@@ -152,84 +148,44 @@ public class PlayerData {
         return jsonBytes;
     }
 
-    /**
-     * Gets the statistics data for the player.
-     *
-     * @return the fishing statistics data.
-     */
     public StatisticData statistics() {
         return statisticsData;
     }
 
-    /**
-     * Gets the bag data for the player.
-     *
-     * @return the bag data.
-     */
     public InventoryData bagData() {
         return bagData;
     }
 
-    /**
-     * Gets the earnings data for the player.
-     *
-     * @return the earnings data.
-     */
     public EarningData earningData() {
         return earningData;
     }
 
-    /**
-     * Gets the name of the player.
-     *
-     * @return the player's name.
-     */
     public String name() {
         return name;
     }
 
-    /**
-     * Gets if the data is locked
-     *
-     * @return locked or not
-     */
     public boolean locked() {
         return locked;
     }
 
-    /**
-     * Set if the data is locked
-     *
-     * @param locked locked or not
-     */
     public void locked(boolean locked) {
         this.locked = locked;
     }
 
-    /**
-     * Gets the uuid
-     *
-     * @return uuid
-     */
     public UUID uuid() {
         return uuid;
     }
 
-    /**
-     * Set the uuid of the data
-     *
-     * @param uuid uuid
-     */
     public void uuid(UUID uuid) {
         this.uuid = uuid;
     }
     
-    /**
-     * Gets all bag pages
-     *
-     * @return list of inventory data for each page
-     */
     public List<InventoryData> getBagPages() {
+        // Initialize if null
+        if (bagPages == null) {
+            bagPages = new ArrayList<>();
+        }
+        
         // Ensure we always have MAX_BAG_PAGES
         while (bagPages.size() < MAX_BAG_PAGES) {
             bagPages.add(InventoryData.empty());
@@ -237,21 +193,10 @@ public class PlayerData {
         return bagPages;
     }
 
-    /**
-     * Sets all bag pages
-     *
-     * @param bagPages list of inventory data for each page
-     */
     public void setBagPages(List<InventoryData> bagPages) {
         this.bagPages = bagPages;
     }
 
-    /**
-     * Gets a specific bag page
-     *
-     * @param page the page number (0-based index)
-     * @return inventory data for the specified page
-     */
     public InventoryData getBagPage(int page) {
         List<InventoryData> pages = getBagPages();
         if (page < 0 || page >= pages.size()) {
@@ -261,12 +206,6 @@ public class PlayerData {
         return data != null ? data : InventoryData.empty();
     }
 
-    /**
-     * Sets a specific bag pages
-     *
-     * @param page the page number (0-based index)
-     * @param data inventory data for the page
-     */
     public void setBagPage(int page, InventoryData data) {
         List<InventoryData> pages = getBagPages();
         if (page >= 0 && page < pages.size()) {

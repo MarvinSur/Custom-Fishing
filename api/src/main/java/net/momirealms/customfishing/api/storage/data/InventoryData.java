@@ -49,4 +49,22 @@ public class InventoryData {
         this.serialized = serialized;
         this.size = size;
     }
+
+    /**
+     * Gets the serialized inventory string.
+     *
+     * @return serialized inventory
+     */
+    public String getSerialized() {
+        return serialized;
+    }
+
+    /**
+     * Gets the inventory size.
+     *
+     * @return inventory size
+     */
+    public int getSize() {
+        return size;
+    }
 }

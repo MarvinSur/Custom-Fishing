@@ -38,8 +38,6 @@ public class FishingBagHolder implements InventoryHolder {
 
     /**
      * Constructs a new FishingBagHolder for the specified owner.
-     *
-     * @param owner the UUID of the player who owns this fishing bag.
      */
     public FishingBagHolder(UUID owner) {
         this(owner, 1);
@@ -47,22 +45,12 @@ public class FishingBagHolder implements InventoryHolder {
 
     /**
      * Constructs a new FishingBagHolder for the specified owner and page.
-     *
-     * @param owner the UUID of the player who owns this fishing bag.
-     * @param page the page number of this bag.
      */
     public FishingBagHolder(UUID owner, int page) {
         this.owner = Objects.requireNonNull(owner, "uuid should be nonnull");
         this.page = page;
     }
 
-    /**
-     * Retrieves the inventory associated with this holder.
-     * If the player's permissions have changed and the inventory size is not consistent,
-     * the inventory is resized accordingly.
-     *
-     * @return the inventory associated with this holder.
-     */
     @Override
     public @NotNull Inventory getInventory() {
         Player player = Bukkit.getPlayer(owner);
@@ -82,63 +70,26 @@ public class FishingBagHolder implements InventoryHolder {
         return inventory;
     }
 
-    /**
-     * Sets the items in the inventory.
-     *
-     * @param itemStacks the array of ItemStacks to set in the inventory.
-     */
     public void setItems(ItemStack[] itemStacks) {
         this.inventory.setContents(itemStacks);
     }
 
-    /**
-     * Retrieves the UUID of the player who owns this fishing bag.
-     *
-     * @return the UUID of the owner.
-     */
     public UUID getOwner() {
         return owner;
     }
 
-    /**
-     * Gets the page number of this bag.
-     *
-     * @return the page number
-     */
     public int getPage() {
         return page;
     }
 
-    /**
-     * Sets the inventory for this holder.
-     *
-     * @param inventory the inventory to set.
-     */
     public void setInventory(Inventory inventory) {
         this.inventory = inventory;
     }
 
-    /**
-     * Creates a new FishingBagHolder with the specified owner, items, and size.
-     *
-     * @param owner the UUID of the player who owns this fishing bag.
-     * @param itemStacks the array of ItemStacks to set in the inventory.
-     * @param size the size of the inventory (must be a multiple of 9).
-     * @return the newly created FishingBagHolder.
-     */
     public static FishingBagHolder create(UUID owner, ItemStack[] itemStacks, int size) {
         return create(owner, itemStacks, size, 1);
     }
 
-    /**
-     * Creates a new FishingBagHolder with the specified owner, items, size, and page.
-     *
-     * @param owner the UUID of the player who owns this fishing bag.
-     * @param itemStacks the array of ItemStacks to set in the inventory.
-     * @param size the size of the inventory (must be a multiple of 9).
-     * @param page the page number
-     * @return the newly created FishingBagHolder.
-     */
     public static FishingBagHolder create(UUID owner, ItemStack[] itemStacks, int size, int page) {
         FishingBagHolder holder = new FishingBagHolder(owner, page);
         Inventory inventory = Bukkit.createInventory(holder, size);
