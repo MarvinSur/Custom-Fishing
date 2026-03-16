@@ -16,31 +16,11 @@ allprojects {
 }
 
 subprojects {
+    // Apply plugin java dan shadow
     apply(plugin = "java")
     apply(plugin = "com.gradleup.shadow")
 
-    dependencies {
-        compileOnly("io.papermc.paper:paper-api:${project.findProperty("paper_version")}")
-        compileOnly("net.kyori:adventure-api:${project.findProperty("adventure_bundle_version")}")
-        compileOnly("net.kyori:adventure-platform-bukkit:${project.findProperty("adventure_platform_version")}")
-        compileOnly("net.kyori:adventure-text-minimessage:${project.findProperty("adventure_bundle_version")}")
-        compileOnly("org.jetbrains:annotations:${project.findProperty("jetbrains_annotations_version")}")
-        implementation("org.incendo:cloud-core:${project.findProperty("cloud_core_version")}")
-        implementation("org.incendo:cloud-services:${project.findProperty("cloud_services_version")}")
-        implementation("org.incendo:cloud-bukkit:${project.findProperty("cloud_bukkit_version")}")
-        implementation("org.incendo:cloud-paper:${project.findProperty("cloud_paper_version")}")
-        implementation("org.incendo:cloud-minecraft-extras:${project.findProperty("cloud_minecraft_extras_version")}")
-        implementation("dev.dejvokep:boosted-yaml:${project.findProperty("boosted_yaml_version")}")
-        compileOnly("com.google.code.gson:gson:${project.findProperty("gson_version")}")
-        implementation("com.mysql:mysql-connector-java:${project.findProperty("mysql_driver_version")}")
-        implementation("org.xerial:sqlite-jdbc:${project.findProperty("sqlite_driver_version")}")
-        implementation("com.zaxxer:HikariCP:${project.findProperty("hikari_version")}")
-        implementation("org.apache.commons:commons-pool2:${project.findProperty("commons_pool_version")}")
-        implementation("org.apache.commons:commons-lang3:3.14.0")
-        implementation("com.github.ben-manes.caffeine:caffeine:${project.findProperty("caffeine_version")}")
-        implementation("org.bstats:bstats-bukkit:${project.findProperty("bstats_version")}")
-    }
-
+    // Konfigurasi Java
     java {
         toolchain.languageVersion.set(JavaLanguageVersion.of(17))
     }
@@ -63,6 +43,35 @@ subprojects {
         }
     }
 
+    // Dependencies
+    dependencies {
+        compileOnly("io.papermc.paper:paper-api:${project.findProperty("paper_version")}")
+        compileOnly("net.kyori:adventure-api:${project.findProperty("adventure_bundle_version")}")
+        compileOnly("net.kyori:adventure-platform-bukkit:${project.findProperty("adventure_platform_version")}")
+        compileOnly("net.kyori:adventure-text-minimessage:${project.findProperty("adventure_bundle_version")}")
+        compileOnly("org.jetbrains:annotations:${project.findProperty("jetbrains_annotations_version")}")
+        compileOnly("com.google.code.gson:gson:${project.findProperty("gson_version")}")
+
+        implementation("org.incendo:cloud-core:${project.findProperty("cloud_core_version")}")
+        implementation("org.incendo:cloud-services:${project.findProperty("cloud_services_version")}")
+        implementation("org.incendo:cloud-bukkit:${project.findProperty("cloud_bukkit_version")}")
+        implementation("org.incendo:cloud-paper:${project.findProperty("cloud_paper_version")}")
+        implementation("org.incendo:cloud-minecraft-extras:${project.findProperty("cloud_minecraft_extras_version")}")
+        implementation("dev.dejvokep:boosted-yaml:${project.findProperty("boosted_yaml_version")}")
+
+        // Database
+        implementation("com.mysql:mysql-connector-java:${project.findProperty("mysql_driver_version")}")
+        implementation("org.xerial:sqlite-jdbc:${project.findProperty("sqlite_driver_version")}")
+        implementation("com.zaxxer:HikariCP:${project.findProperty("hikari_version")}")
+
+        // Utilities
+        implementation("org.apache.commons:commons-pool2:${project.findProperty("commons_pool_version")}")
+        implementation("org.apache.commons:commons-lang3:3.14.0")
+        implementation("com.github.ben-manes.caffeine:caffeine:${project.findProperty("caffeine_version")}")
+        implementation("org.bstats:bstats-bukkit:${project.findProperty("bstats_version")}")
+    }
+
+    // Konfigurasi shadowJar hanya untuk module core
     if (project.name == "core") {
         tasks.shadowJar {
             archiveClassifier.set("")
@@ -94,6 +103,7 @@ subprojects {
             dependsOn(tasks.shadowJar)
         }
     } else {
+        // Module api dan compatibility: jar biasa
         tasks.jar {
             archiveBaseName.set(rootProject.name + "-" + project.name)
             archiveVersion.set(project.version.toString())
@@ -101,6 +111,7 @@ subprojects {
     }
 }
 
+// Task untuk build semua module
 tasks.register("buildAll") {
-    dependsOn(subprojects.map { it.tasks.build })
+    dependsOn(subprojects.map { it.tasks.named("build") })
 }
