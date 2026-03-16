@@ -22,16 +22,18 @@ jobs:
       - run: chmod +x gradlew
       - run: ./gradlew clean buildAll --no-daemon
 
-      - name: Collect core JAR
+      - name: Collect JARs
         run: |
           mkdir -p artifacts
           cp core/build/libs/CustomFishing-*.jar artifacts/ || true
+          cp api/build/libs/CustomFishing-api-*.jar artifacts/ || true
+          cp compatibility/build/libs/CustomFishing-compatibility-*.jar artifacts/ || true
           ls -la artifacts/
 
-      - name: Upload artifact
+      - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: CustomFishing-Plugin
+          name: CustomFishing-Build-${{ github.sha }}
           path: artifacts/
 
       - name: Get version

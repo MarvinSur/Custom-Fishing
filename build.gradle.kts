@@ -1,5 +1,4 @@
 plugins {
-    id("java") apply false
     id("com.gradleup.shadow") version "9.3.0" apply false
 }
 
