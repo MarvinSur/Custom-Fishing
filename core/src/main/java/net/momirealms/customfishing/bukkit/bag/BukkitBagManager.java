@@ -187,8 +187,8 @@ public class BukkitBagManager implements BagManager, Listener {
         } catch (IllegalArgumentException e) {
             pageSwitchSound = Sound.UI_BUTTON_CLICK;
         }
-        soundVolume = (float) config.getDouble("sound-volume", 1.0);
-        soundPitch = (float) config.getDouble("sound-pitch", 1.0);
+        soundVolume = config.getDouble("sound-volume", 1.0).floatValue();
+        soundPitch = config.getDouble("sound-pitch", 1.0).floatValue();
 
         if (bagStoreLoots) storedTypes.add(MechanicType.LOOT);
         if (bagStoreRods) storedTypes.add(MechanicType.ROD);
@@ -300,7 +300,7 @@ public class BukkitBagManager implements BagManager, Listener {
         
         playerPageInventories.remove(player.getUniqueId());
         
-        data.playerData(playerData);
+        data.data(playerData);
     }
 
     @EventHandler
@@ -315,7 +315,7 @@ public class BukkitBagManager implements BagManager, Listener {
             PlayerData playerData = userData.toPlayerData();
             // Simpan sebagai empty dulu, implementasi serialization nanti
             playerData.setBagPage(holder.getPage() - 1, InventoryData.empty());
-            userData.playerData(playerData);
+            userData.data(playerData);
             
             this.plugin.getStorageManager().saveUserData(userData, true);
         }
@@ -375,8 +375,6 @@ public class BukkitBagManager implements BagManager, Listener {
         plugin.getStorageManager().saveUserData(userData, true);
     }
 
-    // ============ HELPER METHODS ============
-
     private Inventory getOrCreatePage(UserData userData, int page) {
         PlayerData playerData = userData.toPlayerData();
         List<InventoryData> pages = playerData.getBagPages();
@@ -405,7 +403,7 @@ public class BukkitBagManager implements BagManager, Listener {
         PlayerData playerData = userData.toPlayerData();
         // Implement serialization later
         playerData.setBagPage(page - 1, InventoryData.empty());
-        userData.playerData(playerData);
+        userData.data(playerData);
         
         Inventory[] cachedPages = playerPageInventories.get(userData.uuid());
         if (cachedPages != null) {

@@ -119,7 +119,7 @@ public class AutoSellListener implements Listener {
             pages.set(i, InventoryData.empty());
         }
         
-        data.playerData(playerData);
+        data.data(playerData);
     }
 
     private void addMoney(Player player, double amount) {
