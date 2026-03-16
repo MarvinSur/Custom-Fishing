@@ -26,7 +26,7 @@ subprojects {
     apply(plugin = "com.gradleup.shadow")
 
     dependencies {
-        // Paper API - COMPILE ONLY (jangan ikut di-shadow)
+        // PAPER API
         compileOnly("io.papermc.paper:paper-api:1.20.4-R0.1-SNAPSHOT")
 
         // Cloud command framework
@@ -38,9 +38,6 @@ subprojects {
 
         // Boosted Yaml
         implementation("dev.dejvokep:boosted-yaml:1.3.7")
-
-        // Gson
-        implementation("com.google.code.gson:gson:2.10.1")
 
         // Database drivers
         implementation("com.zaxxer:HikariCP:5.0.1")
@@ -57,9 +54,9 @@ subprojects {
         implementation("org.apache.commons:commons-lang3:3.14.0")
 
         // Adventure (MiniMessage)
-        implementation("net.kyori:adventure-api:4.17.0")
-        implementation("net.kyori:adventure-platform-bukkit:4.3.2")
-        implementation("net.kyori:adventure-text-minimessage:4.17.0")
+        compileOnly("net.kyori:adventure-api:4.17.0")
+        compileOnly("net.kyori:adventure-platform-bukkit:4.3.2")
+        compileOnly("net.kyori:adventure-text-minimessage:4.17.0")
 
         // BStats
         implementation("org.bstats:bstats-bukkit:3.0.2")
@@ -102,7 +99,6 @@ subprojects {
         val libsPackage = "net.momirealms.customfishing.libs"
         relocate("org.incendo", "$libsPackage.org.incendo")
         relocate("dev.dejvokep.boostedyaml", "$libsPackage.dev.dejvokep.boostedyaml")
-        relocate("com.google.gson", "$libsPackage.com.google.gson")
         relocate("com.zaxxer.hikari", "$libsPackage.com.zaxxer.hikari")
         relocate("com.mongodb", "$libsPackage.com.mongodb")
         relocate("org.bson", "$libsPackage.org.bson")
@@ -110,7 +106,6 @@ subprojects {
         relocate("org.apache.commons.pool2", "$libsPackage.org.apache.commons.pool2")
         relocate("org.apache.commons.lang3", "$libsPackage.org.apache.commons.lang3")
         relocate("com.github.benmanes.caffeine", "$libsPackage.com.github.benmanes.caffeine")
-        relocate("net.kyori", "$libsPackage.net.kyori")
         relocate("org.bstats", "$libsPackage.org.bstats")
         relocate("org.mariadb", "$libsPackage.org.mariadb")
         relocate("com.mysql", "$libsPackage.com.mysql")
