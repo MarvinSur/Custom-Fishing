@@ -15,19 +15,17 @@ jobs:
         with:
           java-version: '17'
           distribution: 'temurin'
-          cache: gradle
-      - name: Setup Gradle
+      - name: Setup Gradle (no cache)
         uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: true
       - run: chmod +x gradlew
       - run: ./gradlew clean shadowJarAll --no-daemon
 
-      - name: Collect artifacts
+      - name: Collect JARs
         run: |
           mkdir -p artifacts
-          cp core/build/libs/CustomFishing-core-*.jar artifacts/ || true
-          cp api/build/libs/CustomFishing-api-*.jar artifacts/ || true
-          cp compatibility/build/libs/CustomFishing-compatibility-*.jar artifacts/ || true
-          rm -f artifacts/*-sources.jar artifacts/*-javadoc.jar
+          find . -path "*/build/libs/*.jar" -not -name "*-sources.jar" -not -name "*-javadoc.jar" -exec cp {} artifacts/ \;
           ls -la artifacts/
 
       - name: Upload artifacts
@@ -40,7 +38,7 @@ jobs:
         id: version
         run: echo "version=$(grep '^project_version=' gradle.properties | cut -d'=' -f2)" >> $GITHUB_OUTPUT
 
-      - name: Create GitHub Release (auto)
+      - name: Create GitHub Release
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
         with:
