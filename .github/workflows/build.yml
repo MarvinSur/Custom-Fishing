@@ -1,4 +1,4 @@
-name: Build & Release CustomFishing
+name: Build and Release CustomFishing
 
 on:
   push:
@@ -6,13 +6,12 @@ on:
     paths-ignore:
       - '**.md'
       - '.github/**'
+  pull_request:
+    branches: [ "main" ]
 
 jobs:
-  build-and-release:
+  build:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      packages: write
     
     steps:
       - name: Checkout repository
@@ -31,18 +30,44 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Build with Gradle
-        run: ./gradlew clean shadowJar --no-daemon
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Build with ShadowJar
+        run: ./gradlew clean shadowJarAll --no-daemon --stacktrace
 
       - name: Collect JARs
         run: |
           mkdir -p artifacts
-          cp core/build/libs/*.jar artifacts/ 2>/dev/null || true
-          cp api/build/libs/*.jar artifacts/ 2>/dev/null || true
-          cp compatibility/build/libs/*.jar artifacts/ 2>/dev/null || true
+          
+          # Core module
+          cp core/build/libs/CustomFishing-core-*.jar artifacts/ 2>/dev/null || true
+          
+          # API module
+          cp api/build/libs/CustomFishing-api-*.jar artifacts/ 2>/dev/null || true
+          
+          # Compatibility module
+          cp compatibility/build/libs/CustomFishing-compatibility-*.jar artifacts/ 2>/dev/null || true
+          
+          # Remove any sources or javadoc jars
           rm -f artifacts/*-sources.jar artifacts/*-javadoc.jar 2>/dev/null || true
-          echo "=== JARs ==="
+          
+          echo "=== Collected JARs ==="
           ls -la artifacts/
+          
+          echo "=== JAR Sizes ==="
+          for file in artifacts/*.jar; do
+            size=$(du -h "$file" | cut -f1)
+            echo "  $size - $(basename "$file")"
+          done
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: CustomFishing-Build-${{ github.sha }}
+          path: artifacts/
+          retention-days: 30
+          if-no-files-found: error
 
       - name: Get version
         id: version
@@ -65,6 +90,8 @@ jobs:
           # Buat tag baru
           git tag -a "$TAG_NAME" -m "Release $TAG_NAME"
           git push origin "$TAG_NAME"
+          
+          echo "Created tag: $TAG_NAME"
 
       - name: Generate Release Notes
         id: notes
@@ -102,17 +129,16 @@ jobs:
             
             ### 📦 Downloads
             $(for file in artifacts/*.jar; do
-              echo "- \`$(basename $file)\`"
+              filename=$(basename "$file")
+              size=$(du -h "$file" | cut -f1)
+              echo "- \`$filename\` ($size)"
             done)
+            
+            ### 🔧 Requirements
+            - Java 17 or higher
+            - Paper 1.20.4 or higher
           files: artifacts/*.jar
           draft: false
           prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Upload artifacts (backup)
-        uses: actions/upload-artifact@v4
-        with:
-          name: CustomFishing-v${{ steps.version.outputs.version }}
-          path: artifacts/
-          retention-days: 30
