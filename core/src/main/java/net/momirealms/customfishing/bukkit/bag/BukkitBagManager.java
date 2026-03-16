@@ -185,8 +185,12 @@ public class BukkitBagManager implements BagManager, Listener {
         } catch (IllegalArgumentException e) {
             pageSwitchSound = Sound.UI_BUTTON_CLICK;
         }
-        soundVolume = (float) config.getDouble("sound-volume", 1.0);
-        soundPitch = (float) config.getDouble("sound-pitch", 1.0);
+
+        Number soundVolumeObj = config.getDouble("sound-volume", 1.0);
+        soundVolume = soundVolumeObj.floatValue();
+
+        Number soundPitchObj = config.getDouble("sound-pitch", 1.0);
+        soundPitch = soundPitchObj.floatValue();
 
         if (bagStoreLoots) storedTypes.add(MechanicType.LOOT);
         if (bagStoreRods) storedTypes.add(MechanicType.ROD);
