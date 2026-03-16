@@ -18,7 +18,6 @@ allprojects {
         maven("https://oss.sonatype.org/content/groups/public/")
         maven("https://repo.momirealms.net/releases/")
         maven("https://jitpack.io")
-        maven("https://repo.codemc.io/repository/maven-public/")
     }
 }
 
@@ -27,7 +26,7 @@ subprojects {
     apply(plugin = "com.gradleup.shadow")
 
     dependencies {
-        // Paper API
+        // Paper API - COMPILE ONLY! (jangan di-shadow)
         compileOnly("io.papermc.paper:paper-api:1.20.4-R0.1-SNAPSHOT")
         
         // Cloud Command Framework
@@ -57,7 +56,7 @@ subprojects {
         implementation("com.github.ben-manes.caffeine:caffeine:3.1.8")
         implementation("org.apache.commons:commons-lang3:3.14.0")
         
-        // Adventure (MiniMessage)
+        // Adventure
         implementation("net.kyori:adventure-api:4.17.0")
         implementation("net.kyori:adventure-platform-bukkit:4.3.2")
         implementation("net.kyori:adventure-text-minimessage:4.17.0")
@@ -67,11 +66,12 @@ subprojects {
         
         // Annotations
         compileOnly("org.jetbrains:annotations:24.1.0")
-        
     }
 
     java {
         toolchain.languageVersion.set(JavaLanguageVersion.of(17))
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
 
     tasks.withType<JavaCompile> {
@@ -99,9 +99,17 @@ subprojects {
         archiveBaseName.set(rootProject.name + "-" + project.name)
         archiveVersion.set(rootProject.properties["project_version"] as String? ?: "unknown")
         
+        // Merge service files
         mergeServiceFiles()
-        minimize()
         
+        // Minimize - buang kelas yang gak dipake
+        minimize {
+            // Kecualikan dependencies yang emang perlu semua kelasnya
+            exclude(dependency("org.incendo:.*:.*"))
+            exclude(dependency("net.kyori:.*:.*"))
+        }
+        
+        // Relocate dependencies
         val libsPackage = "net.momirealms.customfishing.libs"
         
         relocate("org.incendo", "$libsPackage.org.incendo")
@@ -112,6 +120,7 @@ subprojects {
         relocate("org.bson", "$libsPackage.org.bson")
         relocate("redis.clients", "$libsPackage.redis.clients")
         relocate("org.apache.commons.pool2", "$libsPackage.org.apache.commons.pool2")
+        relocate("org.apache.commons.lang3", "$libsPackage.org.apache.commons.lang3")
         relocate("com.github.benmanes.caffeine", "$libsPackage.com.github.benmanes.caffeine")
         relocate("net.kyori", "$libsPackage.net.kyori")
         relocate("org.bstats", "$libsPackage.org.bstats")
@@ -120,9 +129,14 @@ subprojects {
         relocate("org.sqlite", "$libsPackage.org.sqlite")
         relocate("org.h2", "$libsPackage.org.h2")
         
+        // Exclude file gak penting
         exclude("META-INF/maven/**")
         exclude("META-INF/versions/**")
         exclude("**/module-info.class")
+        exclude("LICENSE")
+        exclude("LICENSE.txt")
+        exclude("NOTICE")
+        exclude("NOTICE.txt")
     }
 
     tasks.build {
