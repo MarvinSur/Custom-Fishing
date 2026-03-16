@@ -26,23 +26,23 @@ subprojects {
     apply(plugin = "com.gradleup.shadow")
 
     dependencies {
-        // Paper API - COMPILE ONLY! (jangan di-shadow)
+        // PAPER API - COMPILE ONLY (jangan ikut di-shadow)
         compileOnly("io.papermc.paper:paper-api:1.20.4-R0.1-SNAPSHOT")
-        
-        // Cloud Command Framework
+
+        // Cloud command framework (wajib di-shadow)
         implementation("org.incendo:cloud-core:2.0.0")
         implementation("org.incendo:cloud-services:2.0.0")
         implementation("org.incendo:cloud-bukkit:2.0.0-beta.10")
         implementation("org.incendo:cloud-paper:2.0.0-beta.10")
         implementation("org.incendo:cloud-minecraft-extras:2.0.0-beta.10")
-        
-        // Configuration
+
+        // Boosted Yaml (wajib di-shadow)
         implementation("dev.dejvokep:boosted-yaml:1.3.7")
-        
-        // JSON
+
+        // Gson (sudah include di server? better shadow)
         implementation("com.google.code.gson:gson:2.10.1")
-        
-        // Database
+
+        // Database drivers (optional, bisa di-shadow)
         implementation("com.zaxxer:HikariCP:5.0.1")
         implementation("org.mongodb:mongodb-driver-sync:4.10.2")
         implementation("redis.clients:jedis:4.4.3")
@@ -50,28 +50,26 @@ subprojects {
         implementation("mysql:mysql-connector-java:8.0.33")
         implementation("org.xerial:sqlite-jdbc:3.44.1.0")
         implementation("com.h2database:h2:2.2.224")
-        
+
         // Utilities
         implementation("org.apache.commons:commons-pool2:2.12.0")
         implementation("com.github.ben-manes.caffeine:caffeine:3.1.8")
         implementation("org.apache.commons:commons-lang3:3.14.0")
-        
-        // Adventure
+
+        // Adventure (MiniMessage)
         implementation("net.kyori:adventure-api:4.17.0")
         implementation("net.kyori:adventure-platform-bukkit:4.3.2")
         implementation("net.kyori:adventure-text-minimessage:4.17.0")
-        
+
         // BStats
         implementation("org.bstats:bstats-bukkit:3.0.2")
-        
+
         // Annotations
         compileOnly("org.jetbrains:annotations:24.1.0")
     }
 
     java {
         toolchain.languageVersion.set(JavaLanguageVersion.of(17))
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
     }
 
     tasks.withType<JavaCompile> {
@@ -81,11 +79,9 @@ subprojects {
 
     tasks.processResources {
         filteringCharset = "UTF-8"
-        
         filesMatching(listOf("custom-fishing.properties")) {
             expand(project.properties)
         }
-
         filesMatching(listOf("*.yml", "*/*.yml")) {
             expand(
                 "project_version" to (rootProject.properties["project_version"] ?: "unknown"),
@@ -98,20 +94,12 @@ subprojects {
         archiveClassifier.set("")
         archiveBaseName.set(rootProject.name + "-" + project.name)
         archiveVersion.set(rootProject.properties["project_version"] as String? ?: "unknown")
-        
-        // Merge service files
+
         mergeServiceFiles()
-        
-        // Minimize - buang kelas yang gak dipake
-        minimize {
-            // Kecualikan dependencies yang emang perlu semua kelasnya
-            exclude(dependency("org.incendo:.*:.*"))
-            exclude(dependency("net.kyori:.*:.*"))
-        }
-        
-        // Relocate dependencies
+        minimize()
+
+        // Relocate semua dependency ke package custom
         val libsPackage = "net.momirealms.customfishing.libs"
-        
         relocate("org.incendo", "$libsPackage.org.incendo")
         relocate("dev.dejvokep.boostedyaml", "$libsPackage.dev.dejvokep.boostedyaml")
         relocate("com.google.gson", "$libsPackage.com.google.gson")
@@ -128,15 +116,13 @@ subprojects {
         relocate("com.mysql", "$libsPackage.com.mysql")
         relocate("org.sqlite", "$libsPackage.org.sqlite")
         relocate("org.h2", "$libsPackage.org.h2")
-        
-        // Exclude file gak penting
+
+        // Exclude file tidak perlu
         exclude("META-INF/maven/**")
         exclude("META-INF/versions/**")
         exclude("**/module-info.class")
-        exclude("LICENSE")
-        exclude("LICENSE.txt")
-        exclude("NOTICE")
-        exclude("NOTICE.txt")
+        exclude("LICENSE*")
+        exclude("NOTICE*")
     }
 
     tasks.build {
@@ -150,12 +136,10 @@ tasks.register("shadowJarAll") {
         println("╔══════════════════════════════════════╗")
         println("║   ✅ ALL SHADOW JARS BUILT!          ║")
         println("╚══════════════════════════════════════╝")
-        
         subprojects.forEach { subproject ->
             val jarFile = subproject.layout.buildDirectory
                 .file("libs/${rootProject.name}-${subproject.name}-${rootProject.properties["project_version"]}.jar")
                 .get().asFile
-            
             if (jarFile.exists()) {
                 val sizeMB = String.format("%.2f", jarFile.length() / 1024.0 / 1024.0)
                 println("   📦 ${jarFile.name} - ${sizeMB} MB")
