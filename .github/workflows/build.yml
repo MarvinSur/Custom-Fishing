@@ -20,25 +20,25 @@ jobs:
         with:
           cache-read-only: true
       - run: chmod +x gradlew
-      - run: ./gradlew clean shadowJarAll --no-daemon
+      - run: ./gradlew clean buildAll --no-daemon
 
-      - name: Collect JARs
+      - name: Collect core JAR
         run: |
           mkdir -p artifacts
-          find . -path "*/build/libs/*.jar" -not -name "*-sources.jar" -not -name "*-javadoc.jar" -exec cp {} artifacts/ \;
+          cp core/build/libs/CustomFishing-*.jar artifacts/ || true
           ls -la artifacts/
 
-      - name: Upload artifacts
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: CustomFishing-Build-${{ github.sha }}
+          name: CustomFishing-Plugin
           path: artifacts/
 
       - name: Get version
         id: version
         run: echo "version=$(grep '^project_version=' gradle.properties | cut -d'=' -f2)" >> $GITHUB_OUTPUT
 
-      - name: Create GitHub Release (auto)
+      - name: Create GitHub Release
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
         with:
@@ -48,3 +48,4 @@ jobs:
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          
