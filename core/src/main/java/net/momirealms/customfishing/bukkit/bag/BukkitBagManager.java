@@ -29,6 +29,8 @@ import net.momirealms.customfishing.api.mechanic.bag.FishingBagHolder;
 import net.momirealms.customfishing.api.mechanic.context.Context;
 import net.momirealms.customfishing.api.mechanic.requirement.Requirement;
 import net.momirealms.customfishing.api.mechanic.requirement.RequirementManager;
+import net.momirealms.customfishing.api.storage.data.InventoryData;
+import net.momirealms.customfishing.api.storage.data.PlayerData;
 import net.momirealms.customfishing.api.storage.user.UserData;
 import net.momirealms.customfishing.api.util.EventUtils;
 import net.momirealms.customfishing.api.util.PlayerUtils;
@@ -37,6 +39,7 @@ import net.momirealms.customfishing.common.helper.AdventureHelper;
 import net.momirealms.sparrow.heart.SparrowHeart;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
+import org.bukkit.Sound;
 import org.bukkit.entity.Item;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -48,15 +51,18 @@ import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class BukkitBagManager implements BagManager, Listener {
 
     private final BukkitCustomFishingPlugin plugin;
     private final HashMap<UUID, UserData> tempEditMap;
+    private final ConcurrentHashMap<UUID, Inventory[]> playerPageInventories;
     private Action<Player>[] collectLootActions;
     private Action<Player>[] bagFullActions;
     private boolean bagStoreLoots;
@@ -69,10 +75,21 @@ public class BukkitBagManager implements BagManager, Listener {
     private String bagTitle;
     private List<Material> bagWhiteListItems = new ArrayList<>();
     private Requirement<Player>[] collectRequirements;
+    
+    private static final int MAX_PAGES = 20;
+    private static final int PREV_BUTTON_SLOT = 45;
+    private static final int NEXT_BUTTON_SLOT = 53;
+    private Sound pageSwitchSound;
+    private float soundVolume;
+    private float soundPitch;
 
     public BukkitBagManager(BukkitCustomFishingPlugin plugin) {
         this.plugin = plugin;
         this.tempEditMap = new HashMap<>();
+        this.playerPageInventories = new ConcurrentHashMap<>();
+        this.pageSwitchSound = Sound.UI_BUTTON_CLICK;
+        this.soundVolume = 1.0f;
+        this.soundPitch = 1.0f;
     }
 
     @Override
@@ -85,6 +102,7 @@ public class BukkitBagManager implements BagManager, Listener {
     public void unload() {
         HandlerList.unregisterAll(this);
         storedTypes.clear();
+        playerPageInventories.clear();
     }
 
     @Override
@@ -118,7 +136,10 @@ public class BukkitBagManager implements BagManager, Listener {
             return;
         }
         UserData userData = onlineUser.get();
-        Inventory inventory = userData.holder().getInventory();
+        
+        // Get first page inventory for collection
+        Inventory inventory = getOrCreatePage(userData, 1);
+        
         ItemStack item = itemEntity.getItemStack();
         FishingBagPreCollectEvent preCollectEvent = new FishingBagPreCollectEvent(player, item, inventory);
         if (EventUtils.fireAndCheckCancel(preCollectEvent)) {
@@ -126,11 +147,13 @@ public class BukkitBagManager implements BagManager, Listener {
         }
 
         int cannotPut = PlayerUtils.putItemsToInventory(inventory, item, item.getAmount());
-        // some are put into bag
+        
+        // Save the page after changes
         if (cannotPut != item.getAmount()) {
+            savePage(userData, 1, inventory);
             ActionManager.trigger(context, collectLootActions);
         }
-        // all are put
+        
         if (cannotPut == 0) {
             event.summonEntity(false);
             return;
@@ -144,7 +167,7 @@ public class BukkitBagManager implements BagManager, Listener {
         Section config = BukkitConfigManager.getMainConfig().getSection("mechanics.fishing-bag");
 
         enable = config.getBoolean("enable", true);
-        bagTitle = config.getString("bag-title", "");
+        bagTitle = config.getString("bag-title", "<gold>Fishing Bag <gray>| Page {page}/{maxpage}");
         bagStoreLoots = config.getBoolean("can-store-loot", false);
         bagStoreRods = config.getBoolean("can-store-rod", true);
         bagStoreBaits = config.getBoolean("can-store-bait", true);
@@ -154,6 +177,16 @@ public class BukkitBagManager implements BagManager, Listener {
         collectLootActions = plugin.getActionManager().parseActions(config.getSection("collect-actions"));
         bagFullActions = plugin.getActionManager().parseActions(config.getSection("full-actions"));
         collectRequirements = plugin.getRequirementManager().parseRequirements(config.getSection("collect-requirements"), false);
+        
+        // Load sound settings
+        String soundName = config.getString("page-switch-sound", "UI_BUTTON_CLICK");
+        try {
+            pageSwitchSound = Sound.valueOf(soundName);
+        } catch (IllegalArgumentException e) {
+            pageSwitchSound = Sound.UI_BUTTON_CLICK;
+        }
+        soundVolume = (float) config.getDouble("sound-volume", 1.0);
+        soundPitch = (float) config.getDouble("sound-pitch", 1.0);
 
         if (bagStoreLoots) storedTypes.add(MechanicType.LOOT);
         if (bagStoreRods) storedTypes.add(MechanicType.ROD);
@@ -164,27 +197,122 @@ public class BukkitBagManager implements BagManager, Listener {
 
     @Override
     public CompletableFuture<Boolean> openBag(@NotNull Player viewer, @NotNull UUID owner) {
+        return openBagAtPage(viewer, owner, 1);
+    }
+
+    @Override
+    public CompletableFuture<Boolean> openBagAtPage(@NotNull Player viewer, @NotNull UUID owner, int page) {
         CompletableFuture<Boolean> future = new CompletableFuture<>();
-        if (enable) {
-            Optional<UserData> onlineUser = plugin.getStorageManager().getOnlineUser(owner);
-            onlineUser.ifPresentOrElse(data -> {
-                viewer.openInventory(data.holder().getInventory());
-                SparrowHeart.getInstance().updateInventoryTitle(viewer, AdventureHelper.componentToJson(AdventureHelper.miniMessage(plugin.getPlaceholderManager().parse(Bukkit.getOfflinePlayer(owner), bagTitle, Map.of("{uuid}", owner.toString(), "{player}", data.name())))));
-                future.complete(true);
-            }, () -> plugin.getStorageManager().getOfflineUserData(owner, true).thenAccept(result -> result.ifPresentOrElse(data -> {
-                if (data.isLocked()) {
-                    future.completeExceptionally(new RuntimeException("Data is locked"));
-                    return;
-                }
-                this.tempEditMap.put(viewer.getUniqueId(), data);
-                viewer.openInventory(data.holder().getInventory());
-                SparrowHeart.getInstance().updateInventoryTitle(viewer, AdventureHelper.componentToJson(AdventureHelper.miniMessage(plugin.getPlaceholderManager().parse(Bukkit.getOfflinePlayer(owner), bagTitle, Map.of("{uuid}", owner.toString(), "{player}", data.name())))));
-                future.complete(true);
-            }, () -> future.complete(false))));
-        } else {
+        
+        if (!enable) {
             future.complete(false);
+            return future;
         }
+        
+        // Validasi page
+        if (page < 1 || page > MAX_PAGES) {
+            future.complete(false);
+            return future;
+        }
+        
+        // Cek permission
+        if (!hasPagePermission(viewer, page)) {
+            viewer.sendMessage("§cYou don't have permission to access page " + page + "!");
+            future.complete(false);
+            return future;
+        }
+        
+        Optional<UserData> onlineUser = plugin.getStorageManager().getOnlineUser(owner);
+        onlineUser.ifPresentOrElse(data -> {
+            // Get or create page inventory
+            Inventory targetPage = getOrCreatePage(data, page);
+            
+            // Add navigation buttons
+            addNavigationButtons(targetPage, page, getMaxAccessiblePage(viewer));
+            
+            viewer.openInventory(targetPage);
+            updateInventoryTitle(viewer, owner, page, data.name());
+            future.complete(true);
+            
+        }, () -> plugin.getStorageManager().getOfflineUserData(owner, true).thenAccept(result -> result.ifPresentOrElse(data -> {
+            if (data.isLocked()) {
+                future.completeExceptionally(new RuntimeException("Data is locked"));
+                return;
+            }
+            
+            this.tempEditMap.put(viewer.getUniqueId(), data);
+            
+            Inventory targetPage = getOrCreatePage(data, page);
+            addNavigationButtons(targetPage, page, getMaxAccessiblePage(viewer));
+            
+            viewer.openInventory(targetPage);
+            updateInventoryTitle(viewer, owner, page, data.name());
+            future.complete(true);
+        }, () -> future.complete(false))));
+        
         return future;
+    }
+
+    @Override
+    public boolean hasPagePermission(Player player, int page) {
+        if (player.hasPermission("fishingbag.page.*")) {
+            return true;
+        }
+        return player.hasPermission("fishingbag.page." + page);
+    }
+
+    @Override
+    public int getMaxAccessiblePage(Player player) {
+        if (player.hasPermission("fishingbag.page.*")) {
+            return MAX_PAGES;
+        }
+        
+        for (int i = MAX_PAGES; i >= 1; i--) {
+            if (player.hasPermission("fishingbag.page." + i)) {
+                return i;
+            }
+        }
+        return 1;
+    }
+
+    @Override
+    public int getTotalItemCount(Player player) {
+        Optional<UserData> userData = plugin.getStorageManager().getOnlineUser(player.getUniqueId());
+        if (userData.isEmpty()) return 0;
+        
+        PlayerData playerData = userData.get().toPlayerData();
+        List<InventoryData> pages = playerData.getBagPages();
+        
+        int total = 0;
+        for (InventoryData pageData : pages) {
+            if (pageData != null && pageData.itemStacks() != null) {
+                for (ItemStack item : pageData.itemStacks()) {
+                    if (item != null && item.getType() != Material.AIR) {
+                        total += item.getAmount();
+                    }
+                }
+            }
+        }
+        return total;
+    }
+
+    @Override
+    public void clearAllPages(Player player) {
+        Optional<UserData> userData = plugin.getStorageManager().getOnlineUser(player.getUniqueId());
+        if (userData.isEmpty()) return;
+        
+        UserData data = userData.get();
+        PlayerData playerData = data.toPlayerData();
+        
+        List<InventoryData> pages = playerData.getBagPages();
+        for (int i = 0; i < pages.size(); i++) {
+            pages.set(i, InventoryData.empty());
+        }
+        
+        // Clear cached inventories
+        playerPageInventories.remove(player.getUniqueId());
+        
+        data.playerData(playerData);
     }
 
     /**
@@ -194,13 +322,21 @@ public class BukkitBagManager implements BagManager, Listener {
      */
     @EventHandler
     public void onInvClose(InventoryCloseEvent event) {
-        if (!(event.getInventory().getHolder() instanceof FishingBagHolder))
+        if (!(event.getInventory().getHolder() instanceof FishingBagHolder holder))
             return;
+            
         final Player viewer = (Player) event.getPlayer();
         UserData userData = tempEditMap.remove(viewer.getUniqueId());
-        if (userData == null)
-            return;
-        this.plugin.getStorageManager().saveUserData(userData, true);
+        
+        if (userData != null) {
+            // Save the page that was edited
+            PlayerData playerData = userData.toPlayerData();
+            InventoryData pageData = InventoryData.fromItemStacks(event.getInventory().getContents());
+            playerData.setBagPage(holder.getPage() - 1, pageData);
+            userData.playerData(playerData);
+            
+            this.plugin.getStorageManager().saveUserData(userData, true);
+        }
     }
 
     /**
@@ -211,8 +347,27 @@ public class BukkitBagManager implements BagManager, Listener {
      */
     @EventHandler (ignoreCancelled = true)
     public void onInvClick(InventoryClickEvent event) {
-        if (!(event.getInventory().getHolder() instanceof FishingBagHolder))
+        if (!(event.getInventory().getHolder() instanceof FishingBagHolder holder))
             return;
+            
+        Player player = (Player) event.getWhoClicked();
+        int slot = event.getSlot();
+        
+        // Handle navigation buttons
+        if (slot == PREV_BUTTON_SLOT || slot == NEXT_BUTTON_SLOT) {
+            event.setCancelled(true);
+            
+            int currentPage = holder.getPage();
+            int maxPage = getMaxAccessiblePage(player);
+            int newPage = slot == PREV_BUTTON_SLOT ? currentPage - 1 : currentPage + 1;
+            
+            if (newPage >= 1 && newPage <= maxPage && hasPagePermission(player, newPage)) {
+                player.playSound(player.getLocation(), pageSwitchSound, soundVolume, soundPitch);
+                openBagAtPage(player, holder.getOwner(), newPage);
+            }
+            return;
+        }
+        
         ItemStack movedItem = event.getCurrentItem();
         Inventory clicked = event.getClickedInventory();
         if (clicked != event.getWhoClicked().getInventory()) {
@@ -251,5 +406,86 @@ public class BukkitBagManager implements BagManager, Listener {
         if (userData == null)
             return;
         plugin.getStorageManager().saveUserData(userData, true);
+    }
+
+    // ============ HELPER METHODS ============
+
+    private Inventory getOrCreatePage(UserData userData, int page) {
+        PlayerData playerData = userData.toPlayerData();
+        List<InventoryData> pages = playerData.getBagPages();
+        
+        // Ensure page exists
+        if (page > pages.size()) {
+            while (pages.size() < page) {
+                pages.add(InventoryData.empty());
+            }
+        }
+        
+        InventoryData pageData = pages.get(page - 1);
+        Player owner = Bukkit.getPlayer(userData.uuid());
+        int rows = owner != null ? BagManager.getBagInventoryRows(owner) : 6;
+        
+        FishingBagHolder holder = FishingBagHolder.create(
+            userData.uuid(), 
+            pageData.itemStacks(), 
+            rows * 9,
+            page
+        );
+        
+        // Cache the inventory
+        Inventory[] cachedPages = playerPageInventories.computeIfAbsent(userData.uuid(), k -> new Inventory[MAX_PAGES]);
+        cachedPages[page - 1] = holder.getInventory();
+        
+        return holder.getInventory();
+    }
+
+    private void savePage(UserData userData, int page, Inventory inventory) {
+        PlayerData playerData = userData.toPlayerData();
+        InventoryData pageData = InventoryData.fromItemStacks(inventory.getContents());
+        playerData.setBagPage(page - 1, pageData);
+        userData.playerData(playerData);
+        
+        // Update cache
+        Inventory[] cachedPages = playerPageInventories.get(userData.uuid());
+        if (cachedPages != null) {
+            cachedPages[page - 1] = inventory;
+        }
+    }
+
+    private void addNavigationButtons(Inventory inv, int currentPage, int maxPage) {
+        ItemStack prevButton = createNavButton(
+            currentPage > 1, 
+            "§aPrevious Page", 
+            currentPage > 1 ? "§7Click to go to page " + (currentPage - 1) : "§7You are on the first page"
+        );
+        
+        ItemStack nextButton = createNavButton(
+            currentPage < maxPage, 
+            "§aNext Page", 
+            currentPage < maxPage ? "§7Click to go to page " + (currentPage + 1) : "§7Last page reached"
+        );
+        
+        inv.setItem(PREV_BUTTON_SLOT, prevButton);
+        inv.setItem(NEXT_BUTTON_SLOT, nextButton);
+    }
+
+    private ItemStack createNavButton(boolean enabled, String name, String lore) {
+        ItemStack button = new ItemStack(enabled ? Material.ARROW : Material.BARRIER);
+        ItemMeta meta = button.getItemMeta();
+        meta.setDisplayName(name);
+        meta.setLore(Collections.singletonList(lore));
+        button.setItemMeta(meta);
+        return button;
+    }
+
+    private void updateInventoryTitle(Player viewer, UUID owner, int page, String ownerName) {
+        String title = bagTitle.replace("{player}", ownerName)
+                               .replace("{page}", String.valueOf(page))
+                               .replace("{maxpage}", String.valueOf(getMaxAccessiblePage(viewer)));
+        SparrowHeart.getInstance().updateInventoryTitle(viewer, 
+            AdventureHelper.componentToJson(AdventureHelper.miniMessage(
+                plugin.getPlaceholderManager().parse(Bukkit.getOfflinePlayer(owner), title, Map.of("{uuid}", owner.toString()))
+            ))
+        );
     }
 }

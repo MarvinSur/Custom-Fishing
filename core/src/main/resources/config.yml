@@ -153,8 +153,11 @@ mechanics:
   # The fishing bag is where players store bait, utilities, hooks, and rods (loot is optional)
   fishing-bag:
     enable: true
-    # Title of the fishing bag container
-    bag-title: '<blue>{player}''s Fishing Bag</blue>'
+    # Fishing bag container
+    bag-title: '<blue>{player}''s Fishing Bag</blue> <gray>| Page {page}/{maxpage}'
+    page-switch-sound: "UI_BUTTON_CLICK"
+    sound-volume: 1.0
+    sound-pitch: 1.0    
     # Other whitelist items
     whitelist-items:
       - fishing_rod

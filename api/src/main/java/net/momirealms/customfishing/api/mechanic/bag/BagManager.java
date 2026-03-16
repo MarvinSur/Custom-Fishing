@@ -59,4 +59,47 @@ public interface BagManager extends Reloadable {
      *         or {@code false} otherwise.
      */
     CompletableFuture<Boolean> openBag(@NotNull Player viewer, @NotNull UUID owner);
+    
+    /**
+     * Opens the fishing bag at a specific page
+     *
+     * @param viewer the player who will view the fishing bag
+     * @param owner the UUID of the player who owns the fishing bag
+     * @param page the page number to open (1-20)
+     * @return a {@link CompletableFuture} that completes with {@code true} if the bag was successfully opened,
+     *         or {@code false} otherwise.
+     */
+    CompletableFuture<Boolean> openBagAtPage(@NotNull Player viewer, @NotNull UUID owner, int page);
+    
+    /**
+     * Checks if player has permission to access a specific page
+     *
+     * @param player the player to check
+     * @param page the page number
+     * @return true if the player has permission to access the page
+     */
+    boolean hasPagePermission(Player player, int page);
+    
+    /**
+     * Gets the maximum page number a player can access based on their permissions
+     *
+     * @param player the player to check
+     * @return the maximum accessible page number
+     */
+    int getMaxAccessiblePage(Player player);
+    
+    /**
+     * Gets total item count across all bag pages for a player
+     *
+     * @param player the player whose bag to check
+     * @return total number of items in all bag pages
+     */
+    int getTotalItemCount(Player player);
+    
+    /**
+     * Clears all items from all bag pages for a player
+     *
+     * @param player the player whose bag to clear
+     */
+    void clearAllPages(Player player);
 }

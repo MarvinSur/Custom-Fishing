@@ -22,7 +22,7 @@ import net.momirealms.customfishing.api.BukkitCustomFishingPlugin;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.UUID;
+import java.util.*;
 
 import static java.util.Objects.requireNonNull;
 
@@ -36,6 +36,7 @@ public class PlayerData {
     public static final StatisticData DEFAULT_STATISTICS = StatisticData.empty();
     public static final InventoryData DEFAULT_BAG = InventoryData.empty();
     public static final EarningData DEFAULT_EARNING = EarningData.empty();
+    public static final int MAX_BAG_PAGES = 20;
 
     @SerializedName("name")
     protected String name;
@@ -45,17 +46,27 @@ public class PlayerData {
     protected InventoryData bagData;
     @SerializedName("trade")
     protected EarningData earningData;
+    @SerializedName("bag_pages")
+    protected List<InventoryData> bagPages;
+    
     transient private UUID uuid;
     transient private boolean locked;
     transient private byte[] jsonBytes;
 
-    public PlayerData(UUID uuid, String name, StatisticData statisticsData, InventoryData bagData, EarningData earningData, boolean isLocked) {
+    public PlayerData(UUID uuid, String name, StatisticData statisticsData, InventoryData bagData, 
+                      EarningData earningData, boolean isLocked, List<InventoryData> bagPages) {
         this.name = name;
         this.statisticsData = statisticsData;
         this.bagData = bagData;
         this.earningData = earningData;
         this.locked = isLocked;
         this.uuid = uuid;
+        this.bagPages = bagPages != null ? bagPages : new ArrayList<>();
+        
+        // Initialize empty pages up to MAX_BAG_PAGES
+        while (this.bagPages.size() < MAX_BAG_PAGES) {
+            this.bagPages.add(InventoryData.empty());
+        }
     }
 
     public static Builder builder() {
@@ -69,6 +80,7 @@ public class PlayerData {
                 .statistics(StatisticData.empty())
                 .uuid(new UUID(0, 0))
                 .locked(false)
+                .bagPages(new ArrayList<>())
                 .build();
     }
 
@@ -83,6 +95,7 @@ public class PlayerData {
         private EarningData earningData = DEFAULT_EARNING;
         private boolean isLocked = false;
         private UUID uuid;
+        private List<InventoryData> bagPages = new ArrayList<>();
 
         @NotNull
         public Builder name(@NotNull String name) {
@@ -121,8 +134,14 @@ public class PlayerData {
         }
 
         @NotNull
+        public Builder bagPages(@Nullable List<InventoryData> bagPages) {
+            this.bagPages = bagPages != null ? bagPages : new ArrayList<>();
+            return this;
+        }
+
+        @NotNull
         public PlayerData build() {
-            return new PlayerData(requireNonNull(uuid), name, statisticsData, bagData, earningData, isLocked);
+            return new PlayerData(requireNonNull(uuid), name, statisticsData, bagData, earningData, isLocked, bagPages);
         }
     }
 
@@ -203,5 +222,55 @@ public class PlayerData {
      */
     public void uuid(UUID uuid) {
         this.uuid = uuid;
+    }
+    
+    /**
+     * Gets all bag pages
+     *
+     * @return list of inventory data for each page
+     */
+    public List<InventoryData> getBagPages() {
+        // Ensure we always have MAX_BAG_PAGES
+        while (bagPages.size() < MAX_BAG_PAGES) {
+            bagPages.add(InventoryData.empty());
+        }
+        return bagPages;
+    }
+
+    /**
+     * Sets all bag pages
+     *
+     * @param bagPages list of inventory data for each page
+     */
+    public void setBagPages(List<InventoryData> bagPages) {
+        this.bagPages = bagPages;
+    }
+
+    /**
+     * Gets a specific bag page
+     *
+     * @param page the page number (0-based index)
+     * @return inventory data for the specified page
+     */
+    public InventoryData getBagPage(int page) {
+        List<InventoryData> pages = getBagPages();
+        if (page < 0 || page >= pages.size()) {
+            return InventoryData.empty();
+        }
+        InventoryData data = pages.get(page);
+        return data != null ? data : InventoryData.empty();
+    }
+
+    /**
+     * Sets a specific bag pages
+     *
+     * @param page the page number (0-based index)
+     * @param data inventory data for the page
+     */
+    public void setBagPage(int page, InventoryData data) {
+        List<InventoryData> pages = getBagPages();
+        if (page >= 0 && page < pages.size()) {
+            pages.set(page, data);
+        }
     }
 }

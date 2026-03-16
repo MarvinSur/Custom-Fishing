@@ -33,6 +33,7 @@ import java.util.UUID;
 public class FishingBagHolder implements InventoryHolder {
 
     private final UUID owner;
+    private final int page;
     private Inventory inventory;
 
     /**
@@ -41,7 +42,18 @@ public class FishingBagHolder implements InventoryHolder {
      * @param owner the UUID of the player who owns this fishing bag.
      */
     public FishingBagHolder(UUID owner) {
+        this(owner, 1);
+    }
+
+    /**
+     * Constructs a new FishingBagHolder for the specified owner and page.
+     *
+     * @param owner the UUID of the player who owns this fishing bag.
+     * @param page the page number of this bag.
+     */
+    public FishingBagHolder(UUID owner, int page) {
         this.owner = Objects.requireNonNull(owner, "uuid should be nonnull");
+        this.page = page;
     }
 
     /**
@@ -89,6 +101,15 @@ public class FishingBagHolder implements InventoryHolder {
     }
 
     /**
+     * Gets the page number of this bag.
+     *
+     * @return the page number
+     */
+    public int getPage() {
+        return page;
+    }
+
+    /**
      * Sets the inventory for this holder.
      *
      * @param inventory the inventory to set.
@@ -106,7 +127,20 @@ public class FishingBagHolder implements InventoryHolder {
      * @return the newly created FishingBagHolder.
      */
     public static FishingBagHolder create(UUID owner, ItemStack[] itemStacks, int size) {
-        FishingBagHolder holder = new FishingBagHolder(owner);
+        return create(owner, itemStacks, size, 1);
+    }
+
+    /**
+     * Creates a new FishingBagHolder with the specified owner, items, size, and page.
+     *
+     * @param owner the UUID of the player who owns this fishing bag.
+     * @param itemStacks the array of ItemStacks to set in the inventory.
+     * @param size the size of the inventory (must be a multiple of 9).
+     * @param page the page number
+     * @return the newly created FishingBagHolder.
+     */
+    public static FishingBagHolder create(UUID owner, ItemStack[] itemStacks, int size, int page) {
+        FishingBagHolder holder = new FishingBagHolder(owner, page);
         Inventory inventory = Bukkit.createInventory(holder, size);
         holder.setInventory(inventory);
         holder.setItems(itemStacks);

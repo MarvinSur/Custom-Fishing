@@ -18,6 +18,7 @@
 package net.momirealms.customfishing.bukkit.command.feature;
 
 import net.momirealms.customfishing.api.BukkitCustomFishingPlugin;
+import net.momirealms.customfishing.bukkit.bag.BukkitBagManager;
 import net.momirealms.customfishing.bukkit.command.BukkitCommandFeature;
 import net.momirealms.customfishing.common.command.CustomFishingCommandManager;
 import net.momirealms.customfishing.common.locale.MessageConstants;
@@ -25,6 +26,7 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.incendo.cloud.Command;
 import org.incendo.cloud.CommandManager;
+import org.incendo.cloud.parser.standard.IntegerParser;
 
 public class FishingBagCommand extends BukkitCommandFeature<CommandSender> {
 
@@ -36,8 +38,15 @@ public class FishingBagCommand extends BukkitCommandFeature<CommandSender> {
     public Command.Builder<? extends CommandSender> assembleCommand(CommandManager<CommandSender> manager, Command.Builder<CommandSender> builder) {
         return builder
                 .senderType(Player.class)
+                .optional("page", IntegerParser.integerParser(1, 20))
                 .handler(context -> {
-                    BukkitCustomFishingPlugin.getInstance().getBagManager().openBag(context.sender(), context.sender().getUniqueId()).whenComplete((result, e) -> {
+                    Player player = context.sender();
+                    int page = context.getOrDefault("page", 1);
+                    
+                    BukkitCustomFishingPlugin plugin = BukkitCustomFishingPlugin.getInstance();
+                    BukkitBagManager bagManager = (BukkitBagManager) plugin.getBagManager();
+                    
+                    bagManager.openBagAtPage(player, player.getUniqueId(), page).whenComplete((result, e) -> {
                        if (!result || e != null) {
                            handleFeedback(context, MessageConstants.COMMAND_DATA_FAILURE_NOT_LOADED);
                        }

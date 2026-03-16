@@ -39,6 +39,7 @@ import net.momirealms.customfishing.bukkit.game.BukkitGameManager;
 import net.momirealms.customfishing.bukkit.hook.BukkitHookManager;
 import net.momirealms.customfishing.bukkit.integration.BukkitIntegrationManager;
 import net.momirealms.customfishing.bukkit.item.BukkitItemManager;
+import net.momirealms.customfishing.bukkit.listener.AutoSellListener;
 import net.momirealms.customfishing.bukkit.loot.BukkitLootManager;
 import net.momirealms.customfishing.bukkit.market.BukkitMarketManager;
 import net.momirealms.customfishing.bukkit.migration.Migration;
@@ -141,6 +142,9 @@ public class BukkitCustomFishingPluginImpl extends BukkitCustomFishingPlugin {
         this.hologramManager = new HologramManager(this);
         this.commandManager = new BukkitCommandManager(this);
         this.commandManager.registerDefaultFeatures();
+   
+        // Register AutoSellListener
+        Bukkit.getPluginManager().registerEvents(new AutoSellListener(this), getBootstrap());        
 
         boolean downloadFromPolymart = polymart.equals("1");
         boolean downloadFromBBB = buildByBit.equals("true");

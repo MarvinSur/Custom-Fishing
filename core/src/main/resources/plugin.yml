@@ -33,3 +33,70 @@ permissions:
     default: false
   customfishing.sellfish:
     default: true
+  fishingbag.autosell:
+    description: Allows auto sell feature when bag reaches 15,000 items
+    default: false
+  fishingbag.page.*:
+    description: Access to all 20 bag pages
+    default: op
+  fishingbag.page.1:
+    description: Access to page 1
+    default: true
+  fishingbag.page.2:
+    description: Access to page 2
+    default: op
+  fishingbag.page.3:
+    description: Access to page 3
+    default: op
+  fishingbag.page.4:
+    description: Access to page 4
+    default: op
+  fishingbag.page.5:
+    description: Access to page 5
+    default: op
+  fishingbag.page.6:
+    description: Access to page 6
+    default: op
+  fishingbag.page.7:
+    description: Access to page 7
+    default: op
+  fishingbag.page.8:
+    description: Access to page 8
+    default: op
+  fishingbag.page.9:
+    description: Access to page 9
+    default: op
+  fishingbag.page.10:
+    description: Access to page 10
+    default: op
+  fishingbag.page.11:
+    description: Access to page 11
+    default: op
+  fishingbag.page.12:
+    description: Access to page 12
+    default: op
+  fishingbag.page.13:
+    description: Access to page 13
+    default: op
+  fishingbag.page.14:
+    description: Access to page 14
+    default: op
+  fishingbag.page.15:
+    description: Access to page 15
+    default: op
+  fishingbag.page.16:
+    description: Access to page 16
+    default: op
+  fishingbag.page.17:
+    description: Access to page 17
+    default: op
+  fishingbag.page.18:
+    description: Access to page 18
+    default: op
+  fishingbag.page.19:
+    description: Access to page 19
+    default: op
+  fishingbag.page.20:
+    description: Access to page 20
+    default: op
+    

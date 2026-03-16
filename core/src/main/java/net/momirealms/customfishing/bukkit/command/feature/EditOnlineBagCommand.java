@@ -18,6 +18,7 @@
 package net.momirealms.customfishing.bukkit.command.feature;
 
 import net.momirealms.customfishing.api.BukkitCustomFishingPlugin;
+import net.momirealms.customfishing.bukkit.bag.BukkitBagManager;
 import net.momirealms.customfishing.bukkit.command.BukkitCommandFeature;
 import net.momirealms.customfishing.common.command.CustomFishingCommandManager;
 import org.bukkit.command.CommandSender;
@@ -25,6 +26,7 @@ import org.bukkit.entity.Player;
 import org.incendo.cloud.Command;
 import org.incendo.cloud.CommandManager;
 import org.incendo.cloud.bukkit.parser.PlayerParser;
+import org.incendo.cloud.parser.standard.IntegerParser;
 
 public class EditOnlineBagCommand extends BukkitCommandFeature<CommandSender> {
 
@@ -37,10 +39,16 @@ public class EditOnlineBagCommand extends BukkitCommandFeature<CommandSender> {
         return builder
                 .senderType(Player.class)
                 .required("player", PlayerParser.playerParser())
+                .optional("page", IntegerParser.integerParser(1, 20))
                 .handler(context -> {
                     Player admin = context.sender();
                     Player online = context.get("player");
-                    BukkitCustomFishingPlugin.getInstance().getBagManager().openBag(admin, online.getUniqueId());
+                    int page = context.getOrDefault("page", 1);
+                    
+                    BukkitCustomFishingPlugin plugin = BukkitCustomFishingPlugin.getInstance();
+                    BukkitBagManager bagManager = (BukkitBagManager) plugin.getBagManager();
+                    
+                    bagManager.openBagAtPage(admin, online.getUniqueId(), page);
                 });
     }
 

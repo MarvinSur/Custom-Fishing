@@ -18,6 +18,7 @@
 package net.momirealms.customfishing.bukkit.command.feature;
 
 import net.momirealms.customfishing.api.BukkitCustomFishingPlugin;
+import net.momirealms.customfishing.bukkit.bag.BukkitBagManager;
 import net.momirealms.customfishing.bukkit.command.BukkitCommandFeature;
 import net.momirealms.customfishing.common.command.CustomFishingCommandManager;
 import net.momirealms.customfishing.common.locale.MessageConstants;
@@ -25,6 +26,7 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.incendo.cloud.Command;
 import org.incendo.cloud.CommandManager;
+import org.incendo.cloud.parser.standard.IntegerParser;
 import org.incendo.cloud.parser.standard.UUIDParser;
 
 import java.util.UUID;
@@ -40,10 +42,16 @@ public class EditOfflineBagCommand extends BukkitCommandFeature<CommandSender> {
         return builder
                 .senderType(Player.class)
                 .required("uuid", UUIDParser.uuidParser())
+                .optional("page", IntegerParser.integerParser(1, 20))
                 .handler(context -> {
                     Player admin = context.sender();
                     UUID uuid = context.get("uuid");
-                    BukkitCustomFishingPlugin.getInstance().getBagManager().openBag(admin, uuid).whenComplete((result, throwable) -> {
+                    int page = context.getOrDefault("page", 1);
+                    
+                    BukkitCustomFishingPlugin plugin = BukkitCustomFishingPlugin.getInstance();
+                    BukkitBagManager bagManager = (BukkitBagManager) plugin.getBagManager();
+                    
+                    bagManager.openBagAtPage(admin, uuid, page).whenComplete((result, throwable) -> {
                         if (throwable != null) {
                             handleFeedback(context, MessageConstants.COMMAND_BAG_EDIT_FAILURE_UNSAFE);
                             return;
