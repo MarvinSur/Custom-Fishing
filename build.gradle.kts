@@ -17,6 +17,8 @@ allprojects {
         maven("https://repo.papermc.io/repository/maven-public/")
         maven("https://oss.sonatype.org/content/groups/public/")
         maven("https://repo.momirealms.net/releases/")
+        maven("https://jitpack.io")
+        maven("https://repo.codemc.io/repository/maven-public/")
     }
 }
 
@@ -60,20 +62,16 @@ subprojects {
         implementation("net.kyori:adventure-platform-bukkit:4.3.2")
         implementation("net.kyori:adventure-text-minimessage:4.17.0")
         
-        // SparrowHeart (internal)
-        compileOnly("net.momirealms.sparrow:sparrow-heart:0.65")
-        
         // BStats
         implementation("org.bstats:bstats-bukkit:3.0.2")
         
         // Annotations
         compileOnly("org.jetbrains:annotations:24.1.0")
+        
     }
 
     java {
         toolchain.languageVersion.set(JavaLanguageVersion.of(17))
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
     }
 
     tasks.withType<JavaCompile> {
@@ -101,13 +99,9 @@ subprojects {
         archiveBaseName.set(rootProject.name + "-" + project.name)
         archiveVersion.set(rootProject.properties["project_version"] as String? ?: "unknown")
         
-        // Merge service files
         mergeServiceFiles()
-        
-        // Minimize JAR (remove unused classes)
         minimize()
         
-        // Relocate dependencies to avoid conflicts
         val libsPackage = "net.momirealms.customfishing.libs"
         
         relocate("org.incendo", "$libsPackage.org.incendo")
@@ -126,14 +120,9 @@ subprojects {
         relocate("org.sqlite", "$libsPackage.org.sqlite")
         relocate("org.h2", "$libsPackage.org.h2")
         
-        // Exclude unnecessary files
         exclude("META-INF/maven/**")
         exclude("META-INF/versions/**")
         exclude("**/module-info.class")
-        exclude("LICENSE")
-        exclude("LICENSE.txt")
-        exclude("NOTICE")
-        exclude("NOTICE.txt")
     }
 
     tasks.build {
@@ -144,9 +133,9 @@ subprojects {
 tasks.register("shadowJarAll") {
     dependsOn(subprojects.map { it.tasks.shadowJar })
     doLast {
-        println("-")
-        println("-")
-        println("-")
+        println("╔══════════════════════════════════════╗")
+        println("║   ✅ ALL SHADOW JARS BUILT!          ║")
+        println("╚══════════════════════════════════════╝")
         
         subprojects.forEach { subproject ->
             val jarFile = subproject.layout.buildDirectory
