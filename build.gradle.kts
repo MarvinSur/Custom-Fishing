@@ -3,8 +3,8 @@ plugins {
     id("com.gradleup.shadow") version "9.3.0"
 }
 
-val git : String = versionBanner()
-val builder : String = builder()
+val git: String = versionBanner()
+val builder: String = builder()
 ext["git_version"] = git
 ext["builder"] = builder
 
@@ -19,23 +19,37 @@ subprojects {
     tasks.processResources {
         filteringCharset = "UTF-8"
 
-        filesMatching(arrayListOf("custom-fishing.properties")) {
+        filesMatching(listOf("custom-fishing.properties")) {
             expand(rootProject.properties)
         }
 
-        filesMatching(arrayListOf("*.yml", "*/*.yml")) {
+        filesMatching(listOf("*.yml", "*/*.yml")) {
             expand(
-                Pair("project_version", rootProject.properties["project_version"]!!),
-                Pair("config_version", rootProject.properties["config_version"]!!)
+                "project_version" to (rootProject.properties["project_version"] ?: "unknown"),
+                "config_version" to (rootProject.properties["config_version"] ?: "unknown")
             )
         }
     }
 }
 
-fun versionBanner(): String = project.providers.exec {
-    commandLine("git", "rev-parse", "--short=8", "HEAD")
-}.standardOutput.asText.map { it.trim() }.getOrElse("Unknown")
+fun versionBanner(): String {
+    return try {
+        providers.exec {
+            commandLine("git", "rev-parse", "--short=8", "HEAD")
+        }.standardOutput.asText.get().trim()
+    } catch (e: Exception) {
+        println("Warning: Could not get git revision: ${e.message}")
+        "Unknown"
+    }
+}
 
-fun builder(): String = project.providers.exec {
-    commandLine("git", "config", "user.name")
-}.standardOutput.asText.map { it.trim() }.getOrElse("Unknown")
+fun builder(): String {
+    return try {
+        providers.exec {
+            commandLine("git", "config", "user.name")
+        }.standardOutput.asText.get().trim()
+    } catch (e: Exception) {
+        println("Warning: Could not get git user name: ${e.message}")
+        "Unknown"
+    }
+}
