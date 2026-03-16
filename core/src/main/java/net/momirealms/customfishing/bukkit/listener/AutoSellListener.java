@@ -92,34 +92,24 @@ public class AutoSellListener implements Listener {
         }
     }
 
-    private Pair<Integer, Double> calculateSellValue(Player player) {
-        Optional<UserData> userData = plugin.getStorageManager().getOnlineUser(player.getUniqueId());
-        if (userData.isEmpty()) return Pair.of(0, 0.0);
-
-        PlayerData playerData = userData.get().toPlayerData();
-        List<InventoryData> pages = playerData.getBagPages();
-        
-        List<ItemStack> allItems = new ArrayList<>();
-        
-        if (allItems.isEmpty()) return Pair.of(0, 0.0);
-        
-        Context<Player> context = Context.player(player);
-        return marketManager.getItemsToSell(context, allItems);
-    }
-
     private void clearAllBagPages(Player player) {
-        Optional<UserData> userData = plugin.getStorageManager().getOnlineUser(player.getUniqueId());
-        if (userData.isEmpty()) return;
+        Optional<UserData> userDataOpt = plugin.getStorageManager().getOnlineUser(player.getUniqueId());
+        if (userDataOpt.isEmpty()) return;
+    
+        UserData oldData = userDataOpt.get();
+        PlayerData playerData = oldData.toPlayerData();
 
-        UserData data = userData.get();
-        PlayerData playerData = data.toPlayerData();
-        
         List<InventoryData> pages = playerData.getBagPages();
         for (int i = 0; i < pages.size(); i++) {
             pages.set(i, InventoryData.empty());
         }
-        
-        data.data(playerData);
+
+        // Buat UserData baru dengan builder
+        UserData newData = UserData.builder()
+                .data(playerData)
+                .build();
+
+        plugin.getStorageManager().saveUserData(newData, true);
     }
 
     private void addMoney(Player player, double amount) {

@@ -287,39 +287,50 @@ public class BukkitBagManager implements BagManager, Listener {
 
     @Override
     public void clearAllPages(Player player) {
-        Optional<UserData> userData = plugin.getStorageManager().getOnlineUser(player.getUniqueId());
-        if (userData.isEmpty()) return;
+        Optional<UserData> userDataOpt = plugin.getStorageManager().getOnlineUser(player.getUniqueId());
+        if (userDataOpt.isEmpty()) return;
 
-        UserData data = userData.get();
-        PlayerData playerData = data.toPlayerData();
-        
+        UserData oldData = userDataOpt.get();
+        PlayerData playerData = oldData.toPlayerData();
+    
         List<InventoryData> pages = playerData.getBagPages();
         for (int i = 0; i < pages.size(); i++) {
             pages.set(i, InventoryData.empty());
         }
-        
+    
         playerPageInventories.remove(player.getUniqueId());
-        
-        data.data(playerData);
+    
+        // Buat UserData baru dengan builder
+        UserData newData = UserData.builder()
+            .data(playerData)
+            .build();
+    
+            // Simpan yang baru
+        plugin.getStorageManager().saveUserData(newData, true);
     }
+
 
     @EventHandler
     public void onInvClose(InventoryCloseEvent event) {
         if (!(event.getInventory().getHolder() instanceof FishingBagHolder holder))
-            return;
-            
-        final Player viewer = (Player) event.getPlayer();
-        UserData userData = tempEditMap.remove(viewer.getUniqueId());
+        return;
         
-        if (userData != null) {
-            PlayerData playerData = userData.toPlayerData();
-            // Simpan sebagai empty dulu, implementasi serialization nanti
+        final Player viewer = (Player) event.getPlayer();
+        UserData oldData = tempEditMap.remove(viewer.getUniqueId());
+    
+        if (oldData != null) {
+            PlayerData playerData = oldData.toPlayerData();
             playerData.setBagPage(holder.getPage() - 1, InventoryData.empty());
-            userData.data(playerData);
-            
-            this.plugin.getStorageManager().saveUserData(userData, true);
-        }
+        
+            // Buat UserData baru dengan builder
+            UserData newData = UserData.builder()
+                    .data(playerData)
+                    .build();
+        
+            this.plugin.getStorageManager().saveUserData(newData, true);
+        }  
     }
+
 
     @EventHandler (ignoreCancelled = true)
     public void onInvClick(InventoryClickEvent event) {
@@ -404,6 +415,10 @@ public class BukkitBagManager implements BagManager, Listener {
         // Implement serialization later
         playerData.setBagPage(page - 1, InventoryData.empty());
         userData.data(playerData);
+
+        userdata newData = UserData.builder()
+            .data(playerData)
+            .build();
         
         Inventory[] cachedPages = playerPageInventories.get(userData.uuid());
         if (cachedPages != null) {
