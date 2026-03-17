@@ -33,6 +33,7 @@ import net.momirealms.customfishing.api.storage.data.InventoryData;
 import net.momirealms.customfishing.api.storage.data.PlayerData;
 import net.momirealms.customfishing.api.storage.user.UserData;
 import net.momirealms.customfishing.api.util.EventUtils;
+import net.momirealms.customfishing.api.util.InventoryUtils;
 import net.momirealms.customfishing.api.util.PlayerUtils;
 import net.momirealms.customfishing.bukkit.config.BukkitConfigManager;
 import net.momirealms.customfishing.common.helper.AdventureHelper;
@@ -280,8 +281,15 @@ public class BukkitBagManager implements BagManager, Listener {
         List<InventoryData> pages = playerData.getBagPages();
         
         int total = 0;
-        // Note: Karena InventoryData pake serialized string, kita gak bisa hitung item secara akurat
-        // Ini akan diimplementasikan nanti jika perlu
+        for (InventoryData pageData : pages) {
+            if (pageData == null || pageData.getSerialized().isEmpty()) continue;
+            ItemStack[] items = InventoryUtils.getInventoryItems(pageData.getSerialized());
+            for (ItemStack item : items) {
+                if (item != null && !item.getType().isAir()) {
+                    total += item.getAmount();
+                }
+            }
+        }
         return total;
     }
 
@@ -302,25 +310,30 @@ public class BukkitBagManager implements BagManager, Listener {
     
         // Buat UserData baru dengan builder
         UserData newData = UserData.builder()
-            .data(playerData)
-            .build();
+                .data(playerData)
+                .build();
     
-            // Simpan yang baru
+        // Simpan yang baru
         plugin.getStorageManager().saveUserData(newData, true);
     }
-
 
     @EventHandler
     public void onInvClose(InventoryCloseEvent event) {
         if (!(event.getInventory().getHolder() instanceof FishingBagHolder holder))
-        return;
+            return;
         
         final Player viewer = (Player) event.getPlayer();
+        UUID owner = holder.getOwner();
+        
+        // Kasus 1: viewer sedang mengedit data offline (via tempEditMap)
         UserData oldData = tempEditMap.remove(viewer.getUniqueId());
-    
         if (oldData != null) {
             PlayerData playerData = oldData.toPlayerData();
-            playerData.setBagPage(holder.getPage() - 1, InventoryData.empty());
+            // Serialize inventory sebelum disimpan
+            String serialized = InventoryUtils.stacksToBase64(event.getInventory().getContents());
+            int size = event.getInventory().getSize();
+            InventoryData pageData = new InventoryData(serialized, size);
+            playerData.setBagPage(holder.getPage() - 1, pageData);
         
             // Buat UserData baru dengan builder
             UserData newData = UserData.builder()
@@ -328,9 +341,28 @@ public class BukkitBagManager implements BagManager, Listener {
                     .build();
         
             this.plugin.getStorageManager().saveUserData(newData, true);
-        }  
+        } else {
+            // Kasus 2: viewer menutup bag miliknya sendiri (online player)
+            if (viewer.getUniqueId().equals(owner)) {
+                Optional<UserData> onlineUser = plugin.getStorageManager().getOnlineUser(owner);
+                onlineUser.ifPresent(userData -> {
+                    PlayerData playerData = userData.toPlayerData();
+                    String serialized = InventoryUtils.stacksToBase64(event.getInventory().getContents());
+                    int size = event.getInventory().getSize();
+                    InventoryData pageData = new InventoryData(serialized, size);
+                    playerData.setBagPage(holder.getPage() - 1, pageData);
+                    
+                    UserData newData = UserData.builder()
+                            .data(playerData)
+                            .build();
+                    
+                    // Ganti data di online storage
+                    plugin.getStorageManager().getOnlineUsers().remove(userData);
+                    plugin.getStorageManager().getOnlineUsers().add(newData);
+                });
+            }
+        }
     }
-
 
     @EventHandler (ignoreCancelled = true)
     public void onInvClick(InventoryClickEvent event) {
@@ -394,13 +426,27 @@ public class BukkitBagManager implements BagManager, Listener {
             pages.add(InventoryData.empty());
         }
         
+        InventoryData pageData = pages.get(page - 1);
         Player owner = Bukkit.getPlayer(userData.uuid());
         int rows = owner != null ? BagManager.getBagInventoryRows(owner) : 6;
+        int size = rows * 9;
+        
+        // Deserialize item stacks dari InventoryData
+        ItemStack[] items;
+        if (pageData.getSerialized().isEmpty()) {
+            items = new ItemStack[size];
+        } else {
+            items = InventoryUtils.getInventoryItems(pageData.getSerialized());
+            // Pastikan panjang array sesuai size
+            if (items.length != size) {
+                items = Arrays.copyOf(items, size);
+            }
+        }
         
         FishingBagHolder holder = FishingBagHolder.create(
             userData.uuid(), 
-            new ItemStack[rows * 9], // Empty inventory
-            rows * 9,
+            items,
+            size,
             page
         );
         
@@ -412,12 +458,24 @@ public class BukkitBagManager implements BagManager, Listener {
 
     private void savePage(UserData userData, int page, Inventory inventory) {
         PlayerData playerData = userData.toPlayerData();
-        playerData.setBagPage(page - 1, InventoryData.empty());
-
+        
+        // Serialize inventory contents
+        String serialized = InventoryUtils.stacksToBase64(inventory.getContents());
+        int size = inventory.getSize();
+        InventoryData pageData = new InventoryData(serialized, size);
+        
+        playerData.setBagPage(page - 1, pageData);
+        
+        // Buat UserData baru dan simpan
         UserData newData = UserData.builder()
                 .data(playerData)
                 .build();
         
+        // Update di storage manager (online user)
+        plugin.getStorageManager().getOnlineUsers().remove(userData);
+        plugin.getStorageManager().getOnlineUsers().add(newData);
+        
+        // Update cache
         Inventory[] cachedPages = playerPageInventories.get(userData.uuid());
         if (cachedPages != null) {
             cachedPages[page - 1] = inventory;

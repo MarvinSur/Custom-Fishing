@@ -22,6 +22,7 @@ import net.momirealms.customfishing.api.mechanic.context.Context;
 import net.momirealms.customfishing.api.storage.data.InventoryData;
 import net.momirealms.customfishing.api.storage.data.PlayerData;
 import net.momirealms.customfishing.api.storage.user.UserData;
+import net.momirealms.customfishing.api.util.InventoryUtils;
 import net.momirealms.customfishing.bukkit.bag.BukkitBagManager;
 import net.momirealms.customfishing.bukkit.market.BukkitMarketManager;
 import net.momirealms.customfishing.common.util.Pair;
@@ -50,18 +51,6 @@ public class AutoSellListener implements Listener {
         this.plugin = plugin;
         this.bagManager = (BukkitBagManager) plugin.getBagManager();
         this.marketManager = (BukkitMarketManager) plugin.getMarketManager();
-    }
-
-    private Pair<Integer, Double> calculateSellValue(Player player) {
-        Optional<UserData> userDataOpt = plugin.getStorageManager().getOnlineUser(player.getUniqueId());
-        if (userDataOpt.isEmpty()) return Pair.of(0, 0.0);
-
-        UserData userData = userDataOpt.get();
-        PlayerData playerData = userData.toPlayerData();
-    
-        List<InventoryData> pages = playerData.getBagPages();
-    
-        return Pair.of(0, 0.0);
     }
 
     @EventHandler(priority = EventPriority.MONITOR)
@@ -104,10 +93,35 @@ public class AutoSellListener implements Listener {
         }
     }
 
+    private Pair<Integer, Double> calculateSellValue(Player player) {
+        Optional<UserData> userDataOpt = plugin.getStorageManager().getOnlineUser(player.getUniqueId());
+        if (userDataOpt.isEmpty()) return Pair.of(0, 0.0);
+
+        UserData userData = userDataOpt.get();
+        PlayerData playerData = userData.toPlayerData();
+        List<InventoryData> pages = playerData.getBagPages();
+
+        List<ItemStack> allItems = new ArrayList<>();
+        for (InventoryData pageData : pages) {
+            if (pageData == null || pageData.getSerialized().isEmpty()) continue;
+            ItemStack[] items = InventoryUtils.getInventoryItems(pageData.getSerialized());
+            for (ItemStack item : items) {
+                if (item != null && !item.getType().isAir()) {
+                    allItems.add(item.clone());
+                }
+            }
+        }
+
+        if (allItems.isEmpty()) return Pair.of(0, 0.0);
+
+        Context<Player> context = Context.player(player);
+        return marketManager.getItemsToSell(context, allItems);
+    }
+
     private void clearAllBagPages(Player player) {
         Optional<UserData> userDataOpt = plugin.getStorageManager().getOnlineUser(player.getUniqueId());
         if (userDataOpt.isEmpty()) return;
-    
+
         UserData oldData = userDataOpt.get();
         PlayerData playerData = oldData.toPlayerData();
 
