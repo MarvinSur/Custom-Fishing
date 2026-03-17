@@ -1,4 +1,4 @@
-name: Build and Release CustomFishing
+name: Build CustomFishing
 
 on:
   push:
@@ -11,27 +11,28 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # ⬅️ penting agar git history lengkap
+
       - uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
+          cache: gradle
+
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
-        with:
-          cache-read-only: true
+
       - run: chmod +x gradlew
-      - run: ./gradlew clean buildAll --no-daemon
+      - run: ./gradlew clean build --no-daemon
 
       - name: Collect JARs
         run: |
           mkdir -p artifacts
-          cp core/build/libs/CustomFishing-*.jar artifacts/ || true
-          cp api/build/libs/CustomFishing-api-*.jar artifacts/ || true
-          cp compatibility/build/libs/CustomFishing-compatibility-*.jar artifacts/ || true
+          find . -path "*/build/libs/*.jar" -not -name "*-sources.jar" -not -name "*-javadoc.jar" -exec cp {} artifacts/ \;
           ls -la artifacts/
 
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
           name: CustomFishing-Build-${{ github.sha }}
           path: artifacts/
